@@ -16,6 +16,7 @@ class App extends Component {
         this.color = '#333';
         this.conn = null;
 
+        this.curves = [];
         this.canvas = document.createElement('canvas');
 
         this.connect();
@@ -65,6 +66,14 @@ class App extends Component {
         }));
     }
 
+    emptyCanvas() {
+        // TODO
+    }
+
+    drawCurve(curve) {
+        // TODO: draw a curve, line segments connecting points
+    }
+
     compose() {
         return jdom`<div class="app">
             <nav>
@@ -72,6 +81,15 @@ class App extends Component {
             </nav>
             ${this.canvas}
         </div>`;
+    }
+
+    render(...args) {
+        this.emptyCanvas();
+        for (const curve of this.curves) {
+            this.drawCurve();
+        }
+
+        super.render(...args);
     }
 
 }
