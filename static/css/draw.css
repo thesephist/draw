@@ -13,3 +13,10 @@ input,
 button {
     font-size: 1rem;
 }
+
+nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    z-index: 1;
+}

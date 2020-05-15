@@ -6,6 +6,12 @@ draw is a tiny in-memory collaborative whiteboard. It's built on...
 - [Torus](https://github.com/thesephist/torus) as a light frontend UI library
 - My own [blocks.css](https://thesephist.github.io/blocks.css/) to add some spice to the UI design
 
+## Todo items
+
+- [ ] Optimize curve data in transit (so we don't send 400-1000 points in a single websocket message when e.g. 120 will do)
+- [ ] User presence
+- [ ] User-specific curve coloring
+
 ## Deploy
 
 Deployment is managed by systemd. Copy the `draw.service` file to `/etc/systemd/system/draw.service` and update:
