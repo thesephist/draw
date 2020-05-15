@@ -1,0 +1,28 @@
+[Unit]
+Description=draw server
+ConditionPathExists=/home/draw-user/draw/draw
+After=network.target
+
+[Service]
+Type=simple
+User=draw-user
+LimitNOFILE=256
+
+Restart=on-failure
+RestartSec=10
+StartLimitIntervalSec=60
+
+WorkingDirectory=/home/draw-user/draw/
+ExecStart=/home/draw-user/draw/draw
+
+# make sure log directory exists and owned by syslog
+PermissionsStartOnly=true
+ExecStartPre=/bin/mkdir -p /var/log/draw
+ExecStartPre=/bin/chown syslog:adm /var/log/draw
+ExecStartPre=/bin/chmod 755 /var/log/draw
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=draw
+
+[Install]
+WantedBy=multi-user.target
