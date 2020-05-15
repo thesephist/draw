@@ -2,7 +2,7 @@ package draw
 
 // Client represents an abstract client of a chat room
 type Client struct {
-	User      User
+	User      *User
 	Room      *Room
 	OnMessage func(Message)
 
@@ -18,7 +18,7 @@ func (cl *Client) Send(text string) error {
 
 	cl.Room.Broadcast(Message{
 		Type: msgText,
-		User: cl.User,
+		User: *cl.User,
 		Text: text,
 	})
 

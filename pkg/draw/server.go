@@ -21,7 +21,7 @@ var upgrader = websocket.Upgrader{
 	WriteBufferSize: 1024,
 	CheckOrigin: func(r *http.Request) bool {
 		origin := r.Header.Get("Origin")
-		return origin == "https://draw.linus.zone" || origin == "http://localhost:4884"
+		return origin == "https://draw.linus.zone" || origin == "http://localhost:1243"
 	},
 }
 
@@ -69,7 +69,7 @@ func (srv *Server) connect(w http.ResponseWriter, r *http.Request) {
 			log.Printf("error: %v", err)
 
 			if client != nil {
-				client.Send("left chat")
+				client.Send("left room")
 				client.Leave()
 			}
 
@@ -78,28 +78,15 @@ func (srv *Server) connect(w http.ResponseWriter, r *http.Request) {
 
 		switch msg.Type {
 		case msgHello:
-			textParts := strings.Split(msg.Text, "\n")
-			if len(textParts) != 2 {
+			parts := strings.Split(msg.Text, "\n")
+			if len(parts) != 2 {
 				// malformed hello message
 				break
 			}
 
 			u := User{
-				Name:  textParts[0],
-				Color: textParts[1],
-			}
-
-			// Prevent abuses of the name and email fields
-			// by blocking overly long values
-			if len(u.Name) > 120 || len(u.Color) > 7 {
-				break
-			}
-
-			if !srv.Room.CanEnter(u) {
-				conn.WriteJSON(Message{
-					Type: msgMayNotEnter,
-					User: u,
-				})
+				Name:  parts[0],
+				Color: parts[1],
 			}
 
 			client = srv.Room.Enter(u)
@@ -107,13 +94,8 @@ func (srv *Server) connect(w http.ResponseWriter, r *http.Request) {
 				conn.WriteJSON(msg)
 			}
 
-			conn.WriteJSON(Message{
-				Type: msgAuthAck,
-				User: u,
-			})
-
-			client.Send("entered chat")
-		case msgText:
+			log.Println("msgHello")
+		case msgText, msgSetName, msgSetColor:
 			if client == nil {
 				break
 			}
@@ -126,6 +108,8 @@ func (srv *Server) connect(w http.ResponseWriter, r *http.Request) {
 				msg.Text = msg.Text[0:maxTextLen]
 			}
 			client.Send(msg.Text)
+
+			log.Println("msgText", msg.Text)
 		default:
 			log.Printf("unknown message type: %v", msg)
 		}

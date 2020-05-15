@@ -5,20 +5,10 @@ const (
 	msgHello = iota
 	// msgText is used for all normal text messages
 	msgText
-
-	// msgAuth represents an attempt to authenticate with a token
-	msgAuth
-	// msgAuthAck is sent by the server to approve authentication attempt
-	msgAuthAck
-	// msgAuthRst is sent by the server to reject authentication attemp
-	msgAuthRst
-
-	// msgMayNotEnter is sent by the server to reject entry attempt, usually
-	// means the username is taken
-	msgMayNotEnter
-
-	// In the future, we can support things like presence
-	// by using additional codes like MsgTypingStart/Stop
+	// msgSetName indicates request to change Name of the user
+	msgSetName
+	// msgSetColor indicates request to change Color of the user
+	msgSetColor
 )
 
 // Message represents any atomic communication between a draw client
