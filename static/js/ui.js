@@ -152,8 +152,12 @@ class App extends Component {
     }
 
     resize() {
-        this.canvas.width = window.innerWidth;
-        this.canvas.height = window.innerHeight;
+        const dpr = window.devicePixelRatio || 2;
+        this.canvas.width = window.innerWidth * dpr;
+        this.canvas.height = window.innerHeight * dpr;
+        this.canvas.style.width = window.innerWidth + 'px';
+        this.canvas.style.height = window.innerHeight + 'px';
+        this.ctx.scale(dpr, dpr);
         this.render();
     }
 
