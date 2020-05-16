@@ -20,6 +20,12 @@ button {
     left: 0;
 }
 
+.users {
+    margin-bottom: -8px;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
 .avatar {
     display: flex;
     flex-direction: row;
@@ -72,4 +78,29 @@ button {
 
 .updateButton {
     margin-left: auto;
+}
+
+.btnGroup {
+    display: flex;
+    flex-direction: row;
+}
+
+.toasts {
+    position: fixed;
+    top: 0;
+    left: 0;
+    padding-left: 0;
+    margin: 0;
+    max-height: 90vh;
+    overflow-y: auto;
+    padding-bottom: 8px;
+
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+li.toast {
+    list-style: none;
+    margin-bottom: 2px;
 }

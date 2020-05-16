@@ -9,6 +9,8 @@ const (
 	msgChangeUser
 	// msgPresentUsers notifies the client of all present users
 	msgPresentUsers
+	// msgEmptyCanvas notifies users when a user clears their canvas
+	msgEmptyCanvas
 )
 
 // Message represents any atomic communication between a draw client

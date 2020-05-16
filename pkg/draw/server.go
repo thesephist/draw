@@ -122,6 +122,18 @@ func (srv *Server) connect(rm *Room, w http.ResponseWriter, r *http.Request) {
 			client.Send(msgText, msg.Text)
 
 			log.Println("msgText", len(msg.Text))
+		case msgEmptyCanvas:
+			if client == nil {
+				break
+			}
+
+			if !messageLimiter.Allow() {
+				break
+			}
+
+			client.Send(msgEmptyCanvas, "")
+
+			log.Println("msgEmptyCanvas", len(msg.Text))
 		case msgChangeUser:
 			parts := strings.Split(msg.Text, "\n")
 			if len(parts) != 2 {

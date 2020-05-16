@@ -7,7 +7,14 @@ const MSG = {
     Text: 1,
     ChangeUser: 2,
     PresentUsers: 3,
+    EmptyCanvas: 4,
 }
+
+const DEFAULT_USER = 'user';
+const DEFAULT_COLOR = '#333333';
+
+const PALM_REJECTION_LIMIT = 200 * 200;
+const TOAST_DELAY = 1600;
 
 class UserEditDialog extends Component {
 
@@ -15,15 +22,22 @@ class UserEditDialog extends Component {
         this.name = name;
         this.color = color;
 
-        this.saveCallback = saveCallback;
+        this.handleSave = () => saveCallback(this.name, this.color);
         this.handleNameInput = this.handleInput.bind(this, 'name');
         this.handleColorInput = this.handleInput.bind(this, 'color');
+        this.handleKeydown = this.handleKeydown.bind(this);
     }
 
     handleInput(label, evt) {
         const value = evt.target.value;
         this[label] = value;
         this.render();
+    }
+
+    handleKeydown(evt) {
+        if (evt && evt.key === 'Enter') {
+            this.handleSave();
+        }
     }
 
     compose() {
@@ -36,7 +50,8 @@ class UserEditDialog extends Component {
                             <input type="text" placeholder="User" id="ued--name"
                                 autofocus
                                 value="${this.name}"
-                                oninput="${this.handleNameInput}"/>
+                                oninput="${this.handleNameInput}"
+                                onkeydown="${this.handleKeydown}"/>
                         </div>
                     </div>
 
@@ -45,13 +60,12 @@ class UserEditDialog extends Component {
                         <div class="inputWrapper fixed block">
                             <input type="color" id="ued--color"
                                 value="${this.color}"
-                                oninput="${this.handleColorInput}"/>
+                                oninput="${this.handleColorInput}"
+                                onkeydown="${this.handleKeydown}"/>
                         </div>
                     </div>
 
-                    <button onclick="${evt => {
-                        this.saveCallback(this.name, this.color);
-                    }}" class="updateButton accent block">Update</button>
+                    <button onclick="${this.handleSave}" class="updateButton accent block">Update</button>
                 </div>
             </div>
         </div>`;
@@ -62,12 +76,12 @@ class UserEditDialog extends Component {
 class App extends Component {
 
     init() {
-        this.name = 'user';
-        this.color = '#333333';
+        this.name = DEFAULT_USER;
+        this.color = DEFAULT_COLOR;
         // attempt to restore previous name, color
         this.tryRestoreState();
 
-        this.editingUser = true;
+        this.editingUser = this.name === DEFAULT_USER && this.color === DEFAULT_COLOR;
         this.dialog = new UserEditDialog(this.name, this.color, (name, color) => {
             this.changeUser(name, color);
             this.editingUser = false;
@@ -77,6 +91,8 @@ class App extends Component {
 
         // Used by presencer
         this.users = [];
+        // user-visible alerts, FIFO queue
+        this.toasts = [];
         // canvas states
         this.curves = [];
         this.currentCurve = [];
@@ -94,6 +110,7 @@ class App extends Component {
         this.onStart = this.onStart.bind(this);
         this.onEnd = this.onEnd.bind(this);
         this.onMove = this.onMove.bind(this);
+        this.emptyCanvas = this.emptyCanvas.bind(this);
 
         this.canvas.addEventListener('mousedown', this.onStart);
         this.canvas.addEventListener('touchstart', this.onStart);
@@ -174,6 +191,9 @@ class App extends Component {
                         console.error('Error marshaling received curve.', e);
                     }
                     break;
+                case MSG.EmptyCanvas:
+                    this.toast(`${message.user.name} cleared`);
+                    break;
                 case MSG.ChangeUser: {
                     const prev = message.user;
                     const [name, color] = message.text.split('\n');
@@ -219,6 +239,16 @@ class App extends Component {
             type: MSG.Text,
             text: text,
         }));
+    }
+
+    toast(text) {
+        this.toasts.push(text);
+        this.render();
+
+        setTimeout(() => {
+            this.toasts.shift();
+            this.render();
+        }, TOAST_DELAY)
     }
 
     pushPt(x, y) {
@@ -272,6 +302,18 @@ class App extends Component {
         const xPos = evt.clientX;
         const yPos = evt.clientY;
 
+        const xDif = this.lastPosX - xPos;
+        const yDif = this.lastPosY - yPos;
+        const sqDist = xDif * xDif + yDif * yDif;
+        if (sqDist > PALM_REJECTION_LIMIT) {
+            // ignore jumps more than 100px -- palm rejection
+            this.isDragging = false;
+            this.lastPosX = null;
+            this.lastPosY = null;
+            this.pushCurve();
+            return
+        }
+
         this.ctx.lineWidth = 2;
         this.ctx.strokeStyle = this.color;
         this.ctx.beginPath();
@@ -286,6 +328,21 @@ class App extends Component {
     }
 
     emptyCanvas() {
+        this.curves = [];
+        this.currentCurve = [];
+        this.render();
+
+        // notify other clients
+        if (this.conn === null) {
+            return;
+        }
+
+        this.conn.send(JSON.stringify({
+            type: MSG.EmptyCanvas,
+        }));
+    }
+
+    clearCanvas() {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     }
 
@@ -325,23 +382,33 @@ class App extends Component {
             <div class="avatar-name">${u.name}</div>
         </div>`;
 
+        const Toast = t => jdom`<li class="toast fixed block">${t}</li>`;
+
         return jdom`<div class="app">
             ${this.canvas}
+            <ul class="toasts">
+                ${this.toasts.map(Toast)}
+            </ul>
             <nav class="nav">
                 <div class="users">
                     ${this.users.map(User)}
                 </div>
-                <button class="avatarEditButton accent block" onclick="${() => {
-                    this.editingUser = !this.editingUser;
-                    this.render();
-                }}">edit my info</button>
+                <div class="btnGroup">
+                    <button class="avatarEditButton accent block" onclick="${() => {
+                        this.editingUser = !this.editingUser;
+                        this.render();
+                    }}">profile...</button>
+                    <button class="emptyCanvasButton block" onclick="${this.emptyCanvas}">
+                        clear
+                    </button>
+                </div>
             </nav>
             ${this.editingUser ? this.dialog.node : null}
         </div>`;
     }
 
     render(...args) {
-        this.emptyCanvas();
+        this.clearCanvas();
         for (const curve of this.curves) {
             this.drawCurve(curve);
         }
