@@ -44,16 +44,14 @@ func (srv *Server) connect(rm *Room, w http.ResponseWriter, r *http.Request) {
 	var client *Client
 
 	// keep-alive ping-pong messages
+	// TODO: use websocket from a single goroutine to prevent data races,
+	// probably with select{}, and remove lock on Client
 	go func() {
 		for {
 			// 50 seconds, since the HTTP timeout is 60 on this server
 			time.Sleep(50 * time.Second)
 
 			if err := conn.WriteMessage(websocket.PingMessage, nil); err != nil {
-				// XXX: may be racey here against client.Leave() below
-				// in response to failed WebSocket read. May need to Lock.
-				// TODO: probably solve by using a select{} instead of
-				// running this in a separate goroutine.
 				if client != nil {
 					client.Leave()
 				}
@@ -69,7 +67,7 @@ func (srv *Server) connect(rm *Room, w http.ResponseWriter, r *http.Request) {
 
 		err := conn.ReadJSON(&msg)
 		if err != nil {
-			log.Printf("error: %v", err)
+			log.Printf("WebSocket JSON read error: %v", err)
 
 			if client != nil {
 				client.Leave()

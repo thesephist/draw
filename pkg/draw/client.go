@@ -1,5 +1,9 @@
 package draw
 
+import (
+	"sync"
+)
+
 // Client represents an abstract client of a chat room
 type Client struct {
 	User      *User
@@ -7,6 +11,7 @@ type Client struct {
 	OnMessage func(Message)
 
 	receiver chan Message
+	sync.Mutex
 }
 
 // Send sends a new message to the room to which the client
@@ -27,6 +32,11 @@ func (cl *Client) Send(kind int, text string) error {
 
 // Leave lets the client leave the room and cleans up.
 func (cl *Client) Leave() error {
+	// multiple goroutines can double-leavea a client's room.
+	// Leave is idempotent, but we protect against data races
+	cl.Lock()
+	defer cl.Unlock()
+
 	if cl.Room == nil {
 		return Error{"client is not in a room yet"}
 	}
