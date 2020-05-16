@@ -1,7 +1,7 @@
 package draw
 
 import (
-	"sync"
+	"encoding/json"
 )
 
 // Client represents an abstract client of a chat room
@@ -11,7 +11,6 @@ type Client struct {
 	OnMessage func(Message)
 
 	receiver chan Message
-	sync.Mutex
 }
 
 // Send sends a new message to the room to which the client
@@ -30,20 +29,41 @@ func (cl *Client) Send(kind int, text string) error {
 	return nil
 }
 
+func (cl *Client) BroadcastUserList() {
+	presentUsers := cl.Room.PresentUsers()
+	serialized, err := json.Marshal(presentUsers)
+	if err != nil {
+		return
+	}
+
+	cl.Send(msgPresentUsers, string(serialized))
+}
+
 // Leave lets the client leave the room and cleans up.
 func (cl *Client) Leave() error {
-	// multiple goroutines can double-leavea a client's room.
-	// Leave is idempotent, but we protect against data races
-	cl.Lock()
-	defer cl.Unlock()
-
 	if cl.Room == nil {
 		return Error{"client is not in a room yet"}
 	}
 
+	// remember room before exiting, so we can notify
+	// remaining users of leaving
+	rm := cl.Room
+
 	delete(cl.Room.clientReceivers, cl)
 	close(cl.receiver)
 	cl.Room = nil
+
+	// like BroadcastUserList()
+	presentUsers := rm.PresentUsers()
+	serialized, err := json.Marshal(presentUsers)
+	if err != nil {
+		return nil
+	}
+	rm.Broadcast(Message{
+		Type: msgPresentUsers,
+		User: *cl.User,
+		Text: string(serialized),
+	})
 
 	return nil
 }

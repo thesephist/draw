@@ -2,7 +2,6 @@
 package draw
 
 import (
-	"encoding/json"
 	"io"
 	"log"
 	"net/http"
@@ -50,9 +49,6 @@ func (srv *Server) connect(rm *Room, w http.ResponseWriter, r *http.Request) {
 
 	var client *Client
 
-	// keep-alive ping-pong messages
-	// TODO: use websocket from a single goroutine to prevent data races,
-	// probably with select{}, and remove lock on Client
 	go func() {
 		for {
 			time.Sleep(pingPeriod)
@@ -73,8 +69,8 @@ func (srv *Server) connect(rm *Room, w http.ResponseWriter, r *http.Request) {
 	for {
 		var msg Message
 
-		connlock.Lock()
 		err := conn.ReadJSON(&msg)
+		connlock.Lock()
 		if err != nil {
 			log.Printf("WebSocket JSON read error: %v", err)
 
@@ -108,12 +104,7 @@ func (srv *Server) connect(rm *Room, w http.ResponseWriter, r *http.Request) {
 			client.Send(msgHello, msg.Text)
 
 			// notify client of other active users
-			presentUsers := rm.PresentUsers()
-			serialized, err := json.Marshal(presentUsers)
-			if err != nil {
-				break
-			}
-			client.Send(msgPresentUsers, string(serialized))
+			client.BroadcastUserList()
 
 			log.Println("msgHello", u.Name, u.Color)
 		case msgText:
