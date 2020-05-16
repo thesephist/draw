@@ -11,13 +11,13 @@ type Client struct {
 
 // Send sends a new message to the room to which the client
 // cl belongs, under the client user's name.
-func (cl *Client) Send(text string) error {
+func (cl *Client) Send(kind int, text string) error {
 	if cl.Room == nil {
 		return Error{"client is not in a room yet"}
 	}
 
 	cl.Room.Broadcast(Message{
-		Type: msgText,
+		Type: kind,
 		User: *cl.User,
 		Text: text,
 	})

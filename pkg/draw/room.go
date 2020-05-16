@@ -39,3 +39,15 @@ func (rm *Room) Broadcast(msg Message) {
 		receiver <- msg
 	}
 }
+
+// PresentUsers returns all users that are currently present
+// (connected to clients) in the room
+func (rm *Room) PresentUsers() []User {
+	users := []User{}
+
+	for client, _ := range rm.clientReceivers {
+		users = append(users, *client.User)
+	}
+
+	return users
+}

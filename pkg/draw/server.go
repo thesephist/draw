@@ -2,6 +2,7 @@
 package draw
 
 import (
+	"encoding/json"
 	"io"
 	"log"
 	"net/http"
@@ -32,7 +33,7 @@ type Server struct {
 	loginCodes map[string]User
 }
 
-func (srv *Server) connect(w http.ResponseWriter, r *http.Request) {
+func (srv *Server) connect(rm *Room, w http.ResponseWriter, r *http.Request) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Println(err)
@@ -50,7 +51,9 @@ func (srv *Server) connect(w http.ResponseWriter, r *http.Request) {
 
 			if err := conn.WriteMessage(websocket.PingMessage, nil); err != nil {
 				// XXX: may be racey here against client.Leave() below
-				// in response to failed WebSocket read.
+				// in response to failed WebSocket read. May need to Lock.
+				// TODO: probably solve by using a select{} instead of
+				// running this in a separate goroutine.
 				if client != nil {
 					client.Leave()
 				}
@@ -69,7 +72,6 @@ func (srv *Server) connect(w http.ResponseWriter, r *http.Request) {
 			log.Printf("error: %v", err)
 
 			if client != nil {
-				client.Send("left room")
 				client.Leave()
 			}
 
@@ -93,9 +95,18 @@ func (srv *Server) connect(w http.ResponseWriter, r *http.Request) {
 			client.OnMessage = func(msg Message) {
 				conn.WriteJSON(msg)
 			}
+			client.Send(msgHello, msg.Text)
+
+			// notify client of other active users
+			presentUsers := rm.PresentUsers()
+			serialized, err := json.Marshal(presentUsers)
+			if err != nil {
+				break
+			}
+			client.Send(msgPresentUsers, string(serialized))
 
 			log.Println("msgHello")
-		case msgText, msgSetName, msgSetColor:
+		case msgText:
 			if client == nil {
 				break
 			}
@@ -107,9 +118,35 @@ func (srv *Server) connect(w http.ResponseWriter, r *http.Request) {
 			if len(msg.Text) > maxTextLen {
 				msg.Text = msg.Text[0:maxTextLen]
 			}
-			client.Send(msg.Text)
+			client.Send(msgText, msg.Text)
 
 			log.Println("msgText", msg.Text)
+		case msgChangeUser:
+			parts := strings.Split(msg.Text, "\n")
+			if len(parts) != 2 {
+				// malformed hello message
+				break
+			}
+
+			if client == nil {
+				break
+			}
+
+			if !messageLimiter.Allow() {
+				break
+			}
+
+			if len(msg.Text) > maxTextLen {
+				msg.Text = msg.Text[0:maxTextLen]
+			}
+			client.Send(msgChangeUser, msg.Text)
+
+			// change existing user details after ChangeUser
+			// message has been sent on behalf of old user
+			client.User.Name = parts[0]
+			client.User.Color = parts[1]
+
+			log.Println("msgChangeUser", msg.Text)
 		default:
 			log.Printf("unknown message type: %v", msg)
 		}
@@ -147,7 +184,7 @@ func StartServer() {
 	r.HandleFunc("/", handleHome)
 	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
 	r.HandleFunc("/connect", func(w http.ResponseWriter, r *http.Request) {
-		drawSrv.connect(w, r)
+		drawSrv.connect(drawSrv.Room, w, r)
 	})
 
 	log.Printf("draw listening on %s\n", srv.Addr)

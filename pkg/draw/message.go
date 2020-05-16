@@ -5,10 +5,10 @@ const (
 	msgHello = iota
 	// msgText is used for all normal text messages
 	msgText
-	// msgSetName indicates request to change Name of the user
-	msgSetName
-	// msgSetColor indicates request to change Color of the user
-	msgSetColor
+	// msgChangeUser is used to change user name or color
+	msgChangeUser
+	// msgPresentUsers notifies the client of all present users
+	msgPresentUsers
 )
 
 // Message represents any atomic communication between a draw client

@@ -5,8 +5,8 @@ const {
 const MSG = {
     Hello: 0,
     Text: 1,
-    SetName: 2,
-    SetColor: 3,
+    ChangeUser: 2,
+    PresentUsers: 3,
 }
 
 class App extends Component {
@@ -14,6 +14,8 @@ class App extends Component {
     init() {
         this.name = 'user';
         this.color = '#333';
+        // Used by presencer
+        this.users = [];
         this.conn = null;
 
         // canvas states
@@ -35,11 +37,15 @@ class App extends Component {
         this.onMove = this.onMove.bind(this);
 
         this.canvas.addEventListener('mousedown', this.onStart);
-        this.canvas.addEventListener('touchstart', this.onStart);
+        this.canvas.addEventListener('touchstart', this.onStart, {
+            passive: true,
+        });
         this.canvas.addEventListener('mouseup', this.onEnd);
         this.canvas.addEventListener('touchend', this.onEnd);
         this.canvas.addEventListener('mousemove', this.onMove);
-        this.canvas.addEventListener('touchmove', this.onMove);
+        this.canvas.addEventListener('touchmove', this.onMove, {
+            passive: true,
+        });
 
         window.addEventListener('resize', this.resize);
 
@@ -73,21 +79,50 @@ class App extends Component {
             const message = JSON.parse(evt.data);
 
             switch (message.type) {
-                case MSG.Hello:
+                case MSG.Hello: {
+                    const [name, color] = message.text.split('\n');
+                    if (!name || !color) {
+                        break;
+                    }
+                    this.users.push({name, color});
+                    this.render();
                     break;
+                }
                 case MSG.Text:
-                    console.log(message);
                     try {
                         const curve = JSON.parse(message.text);
                         this.curves.push(curve);
                         this.render();
                     } catch (e) {
-                        console.error('Error marshaling received curve', e);
+                        console.error('Error marshaling received curve.', e);
                     }
                     break;
-                case MSG.SetName:
+                case MSG.ChangeUser: {
+                    const prev = message.user;
+                    const [name, color] = message.text.split('\n');
+                    if (!name || !color) {
+                        break;
+                    }
+
+                    for (const u of this.users) {
+                        if (u.name === prev.name && u.color === prev.color) {
+                            u.name = name;
+                            u.color = color;
+                            break;
+                        }
+                    }
+
+                    this.render();
                     break;
-                case MSG.SetColor:
+                }
+                case MSG.PresentUsers:
+                    try {
+                        const presentUsers = JSON.parse(message.text);
+                        this.users = presentUsers;
+                        this.render();
+                    } catch (e) {
+                        console.error('Error marshaling received users.', e);
+                    }
                     break;
                 default:
                     console.error('Unknown message type:', evt.data);
@@ -114,7 +149,10 @@ class App extends Component {
     }
 
     pushCurve() {
-        const curve = this.currentCurve;
+        const curve = {
+            color: this.color,
+            points: this.currentCurve,
+        }
         this.currentCurve = [];
         this.curves.push(curve);
 
@@ -166,6 +204,7 @@ class App extends Component {
         }
 
         this.ctx.lineWidth = 2;
+        this.ctx.strokeStyle = this.color;
         this.ctx.beginPath();
         this.ctx.moveTo(this.lastPosX, this.lastPosY);
         this.ctx.lineTo(xPos, yPos);
@@ -182,9 +221,11 @@ class App extends Component {
     }
 
     drawCurve(curve) {
-        let lastPt = curve[0];
+        const {color, points} = curve;
+        let lastPt = points[0];
         this.ctx.lineWidth = 2;
-        for (const pt of curve.slice(1)) {
+        this.ctx.strokeStyle = color;
+        for (const pt of points.slice(1)) {
             this.ctx.beginPath();
             this.ctx.moveTo(lastPt[0], lastPt[1]);
             this.ctx.lineTo(pt[0], pt[1]);
@@ -192,6 +233,20 @@ class App extends Component {
 
             lastPt = pt;
         }
+    }
+
+    changeUser(name, color) {
+        this.name = name;
+        this.color = color;
+
+        if (this.conn === null) {
+            return;
+        }
+
+        this.conn.send(JSON.stringify({
+            type: MSG.ChangeUser,
+            text: `${name}\n${color}`,
+        }));
     }
 
     compose() {
