@@ -9,15 +9,70 @@ const MSG = {
     PresentUsers: 3,
 }
 
+class UserEditDialog extends Component {
+
+    init(name, color, saveCallback) {
+        this.name = name;
+        this.color = color;
+
+        this.saveCallback = saveCallback;
+        this.handleNameInput = this.handleInput.bind(this, 'name');
+        this.handleColorInput = this.handleInput.bind(this, 'color');
+    }
+
+    handleInput(label, evt) {
+        const value = evt.target.value;
+        this[label] = value;
+        this.render();
+    }
+
+    compose() {
+        return jdom`<div class="userEditDialog-wrapper">
+            <div class="userEditDialog">
+                <div class="userEditDialog-form fixed block">
+                    <div class="inputGroup">
+                        <label for="ued--name">Name</label>
+                        <div class="inputWrapper fixed block">
+                            <input type="text" placeholder="User" id="ued--name"
+                                value="${this.name}"
+                                oninput="${this.handleNameInput}"/>
+                        </div>
+                    </div>
+
+                    <div class="inputGroup">
+                        <label for="ued--color">Color</label>
+                        <div class="inputWrapper fixed block">
+                            <input type="color" id="ued--color"
+                                value="${this.color}"
+                                oninput="${this.handleColorInput}"/>
+                        </div>
+                    </div>
+
+                    <button onclick="${evt => {
+                        this.saveCallback(this.name, this.color);
+                    }}" class="updateButton block">Update</button>
+                </div>
+            </div>
+        </div>`;
+    }
+
+}
+
 class App extends Component {
 
     init() {
         this.name = 'user';
-        this.color = '#333';
-        // Used by presencer
-        this.users = [];
+        this.color = '#333333';
+        this.editingUser = true;
+        this.dialog = new UserEditDialog(this.name, this.color, (name, color) => {
+            this.changeUser(name, color);
+            this.editingUser = false;
+            this.render();
+        });
         this.conn = null;
 
+        // Used by presencer
+        this.users = [];
         // canvas states
         this.curves = [];
         this.currentCurve = [];
@@ -250,11 +305,23 @@ class App extends Component {
     }
 
     compose() {
+        const User = u => jdom`<div class="avatar fixed block">
+            <div class="avatar-icon" style="background:${u.color}"></div>
+            <div class="avatar-name">${u.name}</div>
+        </div>`;
+
         return jdom`<div class="app">
-            <nav>
-                nav bar.
-            </nav>
             ${this.canvas}
+            <nav class="nav">
+                <div class="users">
+                    ${this.users.map(User)}
+                </div>
+                <button class="avatarEditButton block" onclick="${() => {
+                    this.editingUser = !this.editingUser;
+                    this.render();
+                }}">edit my info</button>
+            </nav>
+            ${this.editingUser ? this.dialog.node : null}
         </div>`;
     }
 

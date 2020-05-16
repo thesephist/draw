@@ -14,9 +14,62 @@ button {
     font-size: 1rem;
 }
 
-nav {
+.nav {
     position: fixed;
     bottom: 0;
     left: 0;
-    z-index: 1;
+}
+
+.avatar {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+}
+
+.avatar-icon {
+    display: block;
+    height: 1em;
+    width: 1em;
+    border-radius: 50%;
+    margin-right: .4em;
+}
+
+.userEditDialog-wrapper {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 100vh;
+    width: 100vw;
+    background: rgba(0, 0, 0, .2);
+}
+
+.userEditDialog {
+    position: fixed;
+    top: 50vh;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.userEditDialog label {
+    padding-left: 6px;
+}
+
+.inputGroup {
+    padding: 8px;
+}
+
+.inputWrapper {
+    padding: 0;
+}
+
+#ued--name {
+    border: 0;
+    padding: 6px 10px;
+}
+
+.updateButton {
+    margin-left: auto;
 }
