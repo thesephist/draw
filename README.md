@@ -1,10 +1,16 @@
-# draw
+# draw 🖌
 
-draw is a tiny in-memory collaborative whiteboard. It's built on...
+draw is a tiny in-memory collaborative whiteboard for the web. draw syncs pen strokes in real-time across all users in the room, as well as managing presence in real-time between all active users to show when users join and leave. I wouldn't call it production-ready, but it works well enough for my personal use cases of doodling with friends, and fits in a few megabytes of RAM.
 
-- [Gorilla WebSocket](https://github.com/gorilla/websocket) for initiating and managing WebSocket connections
+I usually use it to share drawings and doodle together with friends on iPads with the Apple Pencil, and works quite well even on slow connections and devices.
+
+It's built on...
+
 - [Torus](https://github.com/thesephist/torus) as a light frontend UI library
-- My own [blocks.css](https://thesephist.github.io/blocks.css/) to add some spice to the UI design
+- [blocks.css](https://thesephist.github.io/blocks.css/) to add some spice to the UI design
+- [Gorilla WebSocket](https://github.com/gorilla/websocket) for initiating and managing WebSocket connections, and as a simple web server
+
+![draw screenshot](draw.jpg)
 
 ## Deploy
 
