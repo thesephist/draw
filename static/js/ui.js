@@ -14,6 +14,7 @@ const DEFAULT_USER = 'user';
 const DEFAULT_COLOR = '#333333';
 
 const PALM_REJECTION_LIMIT = 200 * 200;
+const CURVE_SMOOTHING_LIMIT = 10;
 const TOAST_DELAY = 1600;
 
 class UserEditDialog extends Component {
@@ -275,6 +276,10 @@ class App extends Component {
         if (evt.touches) {
             evt = evt.touches[0];
         }
+        if (evt.touches.length > 1) {
+            return;
+        }
+
         this.isDragging = true;
         this.lastPosX = evt.clientX;
         this.lastPosY = evt.clientY;
@@ -309,12 +314,16 @@ class App extends Component {
         const xDif = this.lastPosX - xPos;
         const yDif = this.lastPosY - yPos;
         const sqDist = xDif * xDif + yDif * yDif;
+        console.log(sqDist);
         if (sqDist > PALM_REJECTION_LIMIT) {
-            // ignore jumps more than 100px -- palm rejection
+            // ignore jumps more than a limit -- palm rejection
             this.isDragging = false;
             this.lastPosX = null;
             this.lastPosY = null;
             this.pushCurve();
+            return
+        }
+        if (sqDist <= CURVE_SMOOTHING_LIMIT) {
             return
         }
 
