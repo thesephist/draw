@@ -64,6 +64,9 @@ class App extends Component {
     init() {
         this.name = 'user';
         this.color = '#333333';
+        // attempt to restore previous name, color
+        this.tryRestoreState();
+
         this.editingUser = true;
         this.dialog = new UserEditDialog(this.name, this.color, (name, color) => {
             this.changeUser(name, color);
@@ -107,6 +110,28 @@ class App extends Component {
 
     remove() {
         window.removeEventListener('resize', this.resize);
+    }
+
+    saveState() {
+        window.localStorage.setItem('state0', JSON.stringify({
+            name: this.name,
+            color: this.color,
+        }));
+    }
+
+    tryRestoreState() {
+        const stateString = window.localStorage.getItem('state0');
+        if (stateString === null) {
+            return;
+        }
+
+        try {
+            const state = JSON.parse(stateString);
+            this.name = state.name;
+            this.color = state.color;
+        } catch (e) {
+            console.error(e);
+        }
     }
 
     resize() {
@@ -287,6 +312,7 @@ class App extends Component {
             return;
         }
 
+        this.saveState();
         this.conn.send(JSON.stringify({
             type: MSG.ChangeUser,
             text: `${name}\n${color}`,
