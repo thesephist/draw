@@ -4,6 +4,23 @@ import (
 	"encoding/json"
 )
 
+// Error represents any error originating
+// from unexpected states in the draw server.
+type Error struct {
+	reason string
+}
+
+func (err Error) Error() string {
+	return err.reason
+}
+
+// User represents a user with the intent to join
+// a draw chat session
+type User struct {
+	Name  string `json:"name"`
+	Color string `json:"color"`
+}
+
 // Client represents an abstract client of a chat room
 type Client struct {
 	User      *User
@@ -29,6 +46,8 @@ func (cl *Client) Send(kind int, text string) error {
 	return nil
 }
 
+// BroadcastUserList pings the room the send a list of all
+// active users to all clients
 func (cl *Client) BroadcastUserList() {
 	presentUsers := cl.Room.PresentUsers()
 	serialized, err := json.Marshal(presentUsers)

@@ -101,8 +101,8 @@ class App extends Component {
         this.isDragging = false;
         // last positions used to calculated speed
         //  and thickness of stroke
-        this.lastPosX = null;
-        this.lastPosY = null;
+        this.xLast = null;
+        this.yLast = null;
 
         this.canvas = document.createElement('canvas');
         this.ctx = this.canvas.getContext('2d');
@@ -162,6 +162,10 @@ class App extends Component {
         this.render();
     }
 
+    // connect() is responsible for establishing and keeping the lifecycle
+    // of the websocket connection. It handles all incoming messages
+    // and connects the websocket JSON stream to the rest of the app, dispatching
+    // method calls as necessary.
     connect() {
         if (window.location.protocol === 'https:') {
             this.conn = new WebSocket(`wss://${window.location.host}/connect`);
@@ -274,6 +278,7 @@ class App extends Component {
     onStart(evt) {
         evt.preventDefault();
         if (evt.touches) {
+            // helps with palm rejection -- reject secondary touches
             if (evt.touches.length > 1) {
                 return;
             }
@@ -281,20 +286,17 @@ class App extends Component {
         }
 
         this.isDragging = true;
-        this.lastPosX = evt.clientX;
-        this.lastPosY = evt.clientY;
+        this.xLast = evt.clientX;
+        this.yLast = evt.clientY;
 
-        this.pushPt(this.lastPosX, this.lastPosY);
+        this.pushPt(this.xLast, this.yLast);
     }
 
     onEnd(evt) {
         evt.preventDefault();
-        if (evt.touches) {
-            evt = evt.touches[0];
-        }
         this.isDragging = false;
-        this.lastPosX = null;
-        this.lastPosY = null;
+        this.xLast = null;
+        this.yLast = null;
 
         this.pushCurve();
     }
@@ -311,15 +313,14 @@ class App extends Component {
         const xPos = evt.clientX;
         const yPos = evt.clientY;
 
-        const xDif = this.lastPosX - xPos;
-        const yDif = this.lastPosY - yPos;
+        const xDif = this.xLast - xPos;
+        const yDif = this.yLast - yPos;
         const sqDist = xDif * xDif + yDif * yDif;
-        console.log(sqDist);
         if (sqDist > PALM_REJECTION_LIMIT) {
             // ignore jumps more than a limit -- palm rejection
             this.isDragging = false;
-            this.lastPosX = null;
-            this.lastPosY = null;
+            this.xLast = null;
+            this.yLast = null;
             this.pushCurve();
             return
         }
@@ -330,12 +331,12 @@ class App extends Component {
         this.ctx.lineWidth = 2;
         this.ctx.strokeStyle = this.color;
         this.ctx.beginPath();
-        this.ctx.moveTo(this.lastPosX, this.lastPosY);
+        this.ctx.moveTo(this.xLast, this.yLast);
         this.ctx.lineTo(xPos, yPos);
         this.ctx.stroke();
 
-        this.lastPosX = xPos;
-        this.lastPosY = yPos;
+        this.xLast = xPos;
+        this.yLast = yPos;
 
         this.pushPt(xPos, yPos);
     }
@@ -353,10 +354,6 @@ class App extends Component {
         this.conn.send(JSON.stringify({
             type: MSG.EmptyCanvas,
         }));
-    }
-
-    clearCanvas() {
-        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     }
 
     drawCurve(curve) {
@@ -421,7 +418,7 @@ class App extends Component {
     }
 
     render(...args) {
-        this.clearCanvas();
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         for (const curve of this.curves) {
             this.drawCurve(curve);
         }
