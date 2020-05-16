@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -16,6 +17,8 @@ import (
 )
 
 const maxTextLen = 65536
+const wsTimeout = 60 * time.Second
+const pingPeriod = wsTimeout * 9 / 10
 
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
@@ -34,6 +37,10 @@ type Server struct {
 }
 
 func (srv *Server) connect(rm *Room, w http.ResponseWriter, r *http.Request) {
+	// since two threads access the connection, we guard writes
+	// to the WS connection with connlock
+	connlock := sync.Mutex{}
+
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Println(err)
@@ -48,15 +55,16 @@ func (srv *Server) connect(rm *Room, w http.ResponseWriter, r *http.Request) {
 	// probably with select{}, and remove lock on Client
 	go func() {
 		for {
-			// 50 seconds, since the HTTP timeout is 60 on this server
-			time.Sleep(50 * time.Second)
+			time.Sleep(pingPeriod)
 
+			connlock.Lock()
 			if err := conn.WriteMessage(websocket.PingMessage, nil); err != nil {
 				if client != nil {
 					client.Leave()
 				}
 				return
 			}
+			connlock.Unlock()
 		}
 	}()
 
@@ -65,6 +73,7 @@ func (srv *Server) connect(rm *Room, w http.ResponseWriter, r *http.Request) {
 	for {
 		var msg Message
 
+		connlock.Lock()
 		err := conn.ReadJSON(&msg)
 		if err != nil {
 			log.Printf("WebSocket JSON read error: %v", err)
@@ -75,6 +84,7 @@ func (srv *Server) connect(rm *Room, w http.ResponseWriter, r *http.Request) {
 
 			break
 		}
+		connlock.Unlock()
 
 		switch msg.Type {
 		case msgHello:
@@ -91,7 +101,9 @@ func (srv *Server) connect(rm *Room, w http.ResponseWriter, r *http.Request) {
 
 			client = srv.Room.Enter(u)
 			client.OnMessage = func(msg Message) {
+				connlock.Lock()
 				conn.WriteJSON(msg)
+				connlock.Unlock()
 			}
 			client.Send(msgHello, msg.Text)
 
@@ -171,8 +183,8 @@ func StartServer() {
 	srv := &http.Server{
 		Handler:      r,
 		Addr:         "127.0.0.1:1243",
-		WriteTimeout: 60 * time.Second,
-		ReadTimeout:  60 * time.Second,
+		WriteTimeout: wsTimeout,
+		ReadTimeout:  wsTimeout,
 	}
 	drawSrv := Server{
 		Room:       NewRoom(),
