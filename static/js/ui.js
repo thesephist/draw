@@ -274,10 +274,10 @@ class App extends Component {
     onStart(evt) {
         evt.preventDefault();
         if (evt.touches) {
+            if (evt.touches.length > 1) {
+                return;
+            }
             evt = evt.touches[0];
-        }
-        if (evt.touches.length > 1) {
-            return;
         }
 
         this.isDragging = true;
