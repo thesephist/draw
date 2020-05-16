@@ -105,7 +105,7 @@ func (srv *Server) connect(rm *Room, w http.ResponseWriter, r *http.Request) {
 			}
 			client.Send(msgPresentUsers, string(serialized))
 
-			log.Println("msgHello")
+			log.Println("msgHello", u.Name, u.Color)
 		case msgText:
 			if client == nil {
 				break
@@ -120,7 +120,7 @@ func (srv *Server) connect(rm *Room, w http.ResponseWriter, r *http.Request) {
 			}
 			client.Send(msgText, msg.Text)
 
-			log.Println("msgText", msg.Text)
+			log.Println("msgText", len(msg.Text))
 		case msgChangeUser:
 			parts := strings.Split(msg.Text, "\n")
 			if len(parts) != 2 {
@@ -146,7 +146,7 @@ func (srv *Server) connect(rm *Room, w http.ResponseWriter, r *http.Request) {
 			client.User.Name = parts[0]
 			client.User.Color = parts[1]
 
-			log.Println("msgChangeUser", msg.Text)
+			log.Println("msgChangeUser", client.User.Name, client.User.Color)
 		default:
 			log.Printf("unknown message type: %v", msg)
 		}
