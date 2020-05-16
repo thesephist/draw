@@ -34,6 +34,7 @@ class UserEditDialog extends Component {
                         <label for="ued--name">Name</label>
                         <div class="inputWrapper fixed block">
                             <input type="text" placeholder="User" id="ued--name"
+                                autofocus
                                 value="${this.name}"
                                 oninput="${this.handleNameInput}"/>
                         </div>
@@ -50,7 +51,7 @@ class UserEditDialog extends Component {
 
                     <button onclick="${evt => {
                         this.saveCallback(this.name, this.color);
-                    }}" class="updateButton block">Update</button>
+                    }}" class="updateButton accent block">Update</button>
                 </div>
             </div>
         </div>`;
@@ -92,15 +93,11 @@ class App extends Component {
         this.onMove = this.onMove.bind(this);
 
         this.canvas.addEventListener('mousedown', this.onStart);
-        this.canvas.addEventListener('touchstart', this.onStart, {
-            passive: true,
-        });
+        this.canvas.addEventListener('touchstart', this.onStart);
         this.canvas.addEventListener('mouseup', this.onEnd);
         this.canvas.addEventListener('touchend', this.onEnd);
         this.canvas.addEventListener('mousemove', this.onMove);
-        this.canvas.addEventListener('touchmove', this.onMove, {
-            passive: true,
-        });
+        this.canvas.addEventListener('touchmove', this.onMove);
 
         window.addEventListener('resize', this.resize);
 
@@ -249,14 +246,6 @@ class App extends Component {
 
         const xPos = evt.clientX;
         const yPos = evt.clientY;
-        const xDif = xPos - this.lastPosX;
-        const yDif = yPos - this.lastPosY;
-
-        // radius of stroke is calculated based on speed
-        let speed = Math.sqrt((xDif * xDif) + (yDif * yDif));
-        if (speed > 20) {
-            speed = 20;
-        }
 
         this.ctx.lineWidth = 2;
         this.ctx.strokeStyle = this.color;
@@ -268,7 +257,7 @@ class App extends Component {
         this.lastPosX = xPos;
         this.lastPosY = yPos;
 
-        this.pushPt(this.lastPosX, this.lastPosY);
+        this.pushPt(xPos, yPos);
     }
 
     emptyCanvas() {
@@ -316,7 +305,7 @@ class App extends Component {
                 <div class="users">
                     ${this.users.map(User)}
                 </div>
-                <button class="avatarEditButton block" onclick="${() => {
+                <button class="avatarEditButton accent block" onclick="${() => {
                     this.editingUser = !this.editingUser;
                     this.render();
                 }}">edit my info</button>
@@ -330,6 +319,10 @@ class App extends Component {
         for (const curve of this.curves) {
             this.drawCurve(curve);
         }
+        this.drawCurve({
+            color: this.color,
+            points: this.currentCurve,
+        });
 
         super.render(...args);
     }
